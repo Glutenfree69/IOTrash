@@ -2,7 +2,7 @@
 
 ## Contexte
 
-Projet EPITECH "Sensor Sensei" : capteur qualité de l'air avec communication LoRa vers une gateway WiFi qui forward les données à sensor.community.
+Projet "Sensor Sensei" : capteur qualité de l'air avec communication LoRa vers une gateway WiFi qui forward les données à sensor.community.
 
 Lire PLAN.md pour l'architecture complète, le protocole, et les phases.
 
