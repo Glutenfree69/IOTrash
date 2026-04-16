@@ -1,0 +1,33 @@
+[package]
+name = "miner"
+version = "0.1.0"
+authors = ["glutenfree"]
+edition = "2021"
+resolver = "2"
+rust-version = "1.82"
+
+[[bin]]
+name = "miner"
+harness = false
+
+[profile.release]
+opt-level = "s"
+
+[profile.dev]
+debug = true
+opt-level = "z"
+
+[patch.crates-io]
+esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys.git" }
+esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf-hal.git" }
+esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc.git" }
+
+[dependencies]
+log = "0.4"
+anyhow = "1"
+esp-idf-svc = { version = "0.52.1", features = ["critical-section"] }
+embedded-svc = "0.29"
+sha1 = "0.10"
+
+[build-dependencies]
+embuild = "0.33"

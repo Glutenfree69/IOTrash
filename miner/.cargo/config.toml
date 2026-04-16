@@ -15,8 +15,5 @@ ESP_IDF_VERSION = "v5.5.3"
 ESP_IDF_TOOLS_INSTALL_DIR = "workspace"
 WIFI_SSID = "Ganggang"
 WIFI_PASS = "mdp12345"
-API_URL = "http://172.20.10.2:8080"
-
-# Uncomment this if you have moved the target dir by setting CARGO_TARGET_DIR or similar.
-# Required for now due to embuild limitations.
-#CARGO_WORKSPACE_DIR = { value = "", relative = true }
+DUCO_USERNAME = "Glutenfree69"
+DUCO_MINING_KEY = "1809"

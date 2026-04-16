@@ -1,0 +1,29 @@
+# Rust / Cargo
+**/target/
+**/Cargo.lock
+
+# ESP-IDF / embuild
+**/.embuild/
+**/sdkconfig
+**/sdkconfig.old
+**/dependencies.lock
+
+# Editors / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Logs
+*.log
