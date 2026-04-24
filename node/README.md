@@ -194,33 +194,101 @@ pendant ce temps.
 
 ### Séquence d'une lecture (`Dht11Reader::read`)
 
+Le point crucial : on **arme le RMT *avant* d'envoyer le signal de démarrage**,
+pour qu'il soit prêt à capturer dès le premier front. L'API `receive()` de
+l'HAL fait arm+wait dans le même appel, mais en passant `timeout: Some(0)` on
+provoque juste l'armement (appel `rmt_receive()` sous-jacent) avec un retour
+immédiat en `ESP_ERR_TIMEOUT`. Comme `has_finished` passe à `false`, le
+`receive()` suivant ne ré-arme pas — il attend juste le callback ISR. Le
+canal est d'ailleurs `enable()`é une fois pour toutes dans `new()` pour ne
+pas payer ce coût sur le chemin critique.
+
 ```
-┌──────────────────────────────────────────────────────────────┐
-│ 1. Host → Sensor : signal de démarrage                       │
-│    - GPIO 13 en sortie open-drain                             │
-│    - LOW pendant 18 ms  (FreeRtos::delay_ms)                  │
-│    - HIGH pendant 30 µs (esp_rom_delay_us)                    │
-│    - GPIO 13 repasse en entrée                                │
-├──────────────────────────────────────────────────────────────┤
-│ 2. Sensor → Host : on démarre la capture RMT                  │
-│    - Le DHT11 émet sa réponse :                               │
-│      LOW 80µs + HIGH 80µs                                     │
-│    - Puis 40 bits, chacun :                                   │
-│      LOW 50µs + HIGH 28µs (=0) ou HIGH 70µs (=1)              │
-│    - Puis remontée en idle (HIGH permanent)                   │
-├──────────────────────────────────────────────────────────────┤
-│ 3. Décodage des symboles RMT                                  │
-│    - On ignore le 1er symbole (réponse)                       │
-│    - Pour chaque symbole suivant : si HIGH > 50µs → bit=1     │
-│    - On reconstitue 5 octets                                  │
-├──────────────────────────────────────────────────────────────┤
-│ 4. Vérification du checksum                                   │
-│    - byte[4] doit valoir (byte[0]+byte[1]+byte[2]+byte[3])&0xFF│
-│    - Sinon on retourne une erreur                             │
-├──────────────────────────────────────────────────────────────┤
-│ 5. Conversion en DhtReading { temperature_c, humidity_pct }   │
-└──────────────────────────────────────────────────────────────┘
+t = 0 ms    ┌──────────────────────────────────────────────────────┐
+            │ 1. ARMEMENT DU RMT                                    │
+            │    receive() avec timeout=0 → rmt_receive() arme le   │
+            │    canal, puis timeout immédiat.                      │
+            │                                                       │
+            │    La ligne est stable HIGH (idle via pullup) → même  │
+            │    si l'init prend des dizaines de µs (allocation du  │
+            │    buffer interne, construction sys_config…), aucun   │
+            │    edge n'est perdu.                                  │
+            └──────────────────────────────────────────────────────┘
+
+t ≈ 0.1 ms  ┌──────────────────────────────────────────────────────┐
+            │ 2. SIGNAL DE DÉMARRAGE HOST → SENSOR                  │
+            │    GPIO 13 en OUTPUT_OD avec pullup                   │
+            │    [LOW  20 ms]   via FreeRtos::delay_ms(20)          │
+            │    [HIGH 30 µs]   via esp_rom_delay_us(30)            │
+            │    → GPIO 13 repasse en INPUT (le RMT reprend la main)│
+            │                                                       │
+            │    Le RMT enregistre ça comme :                       │
+            │    sym[0] = (LOW ~20 ms, HIGH 30 µs)                  │
+            └──────────────────────────────────────────────────────┘
+
+t ≈ 20 ms   ┌──────────────────────────────────────────────────────┐
+            │ 3. RÉPONSE DU CAPTEUR                                 │
+            │    ~30 µs après notre HIGH, le DHT11 :                │
+            │    [LOW 80 µs] + [HIGH 80 µs]                         │
+            │                                                       │
+            │    sym[1] = (LOW 80 µs, HIGH 80 µs)                   │
+            │    ← Seul symbole où les DEUX moitiés dépassent 60 µs │
+            │      → c'est ce qui permet au décodeur de se          │
+            │      synchroniser sur la trame (voir ci-dessous).     │
+            └──────────────────────────────────────────────────────┘
+
+t ≈ 20.2 ms ┌──────────────────────────────────────────────────────┐
+            │ 4. 40 BITS DE DONNÉES                                 │
+            │    Chaque bit :                                       │
+            │    [LOW 50 µs] + [HIGH 28 µs (=0) ou 70 µs (=1)]      │
+            │                                                       │
+            │    sym[2..42], durée totale ~5 ms                     │
+            └──────────────────────────────────────────────────────┘
+
+t ≈ 25 ms   ┌──────────────────────────────────────────────────────┐
+            │ 5. FIN DE TRAME                                       │
+            │    Le capteur relâche, la ligne reste HIGH idle.      │
+            │    Au bout de signal_range_max (30 ms) sans edge, le  │
+            │    RMT déclenche EOF et réveille le driver via ISR.   │
+            └──────────────────────────────────────────────────────┘
+
+t ≈ 55 ms   receive() rend la main avec N symboles (typiquement 42)
+            → décodage ci-dessous.
 ```
+
+### Décodage
+
+1. **Trouver la réponse** : `find_response_index` cherche le premier symbole
+   où **les deux moitiés sont > 60 µs**. C'est sym[1] (80/80 µs). sym[0]
+   (notre signal de démarrage, dont la moitié HIGH ne fait que 30 µs) est
+   sauté automatiquement car il ne passe pas le seuil.
+
+2. **Lire les 40 bits** : pour chaque symbole de sym[2..42], on regarde la
+   durée de la moitié HIGH (`level1`) :
+   - HIGH < 50 µs → bit = 0
+   - HIGH > 50 µs → bit = 1
+
+3. **5 octets** : `[humidité_entier, humidité_déc, temp_entier, temp_déc, checksum]`.
+
+4. **Vérif checksum** : `b0+b1+b2+b3 ≡ b4 (mod 256)`. Sinon erreur.
+
+5. **Conversion** → `DhtReading { temperature_c, humidity_pct }`.
+
+### Le paramètre `signal_range_max = 30 ms`
+
+Deux rôles :
+
+1. **Encaisser notre LOW de 20 ms sans qu'il soit pris pour un "stop signal".**
+   Toute impulsion plus longue que `signal_range_max` fait croire au RMT que
+   la transmission est finie. On met 30 ms pour avoir de la marge car, à
+   100 Hz de tick FreeRTOS (défaut ESP-IDF), `FreeRtos::delay_ms(20)` peut
+   durer jusqu'à ~30 ms selon où on se trouve dans le tick courant.
+
+2. **Déclencher l'EOF à la fin de la trame.** Une fois les 40 bits envoyés, le
+   capteur relâche et la ligne reste HIGH. Sans edge pendant 30 ms, le RMT
+   signale la fin au driver, et `receive()` nous rend la main avec le buffer.
+
+Plafond matériel : ~32 ms (compteur RMT 15 bits à 1 µs de résolution).
 
 ### Pourquoi des appels `unsafe` à `gpio_set_*` dans `send_start_signal` ?
 
