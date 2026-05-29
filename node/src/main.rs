@@ -1,9 +1,11 @@
 mod dht;
+mod lora;
 mod packet;
 
 use std::time::Duration;
 
 use dht::{Dht11Reader, SensorReader};
+use lora::Lora;
 
 const READ_INTERVAL: Duration = Duration::from_secs(5);
 
@@ -13,8 +15,11 @@ fn main() -> anyhow::Result<()> {
 
     log::info!("Sensor Sensei node starting...");
 
-    let peripherals = esp_idf_svc::hal::peripherals::Peripherals::take()?;
     let mut reader = Dht11Reader::new(peripherals.pins.gpio13)?;
+    let lora_driver = Lora::new();
+    // TODO:
+    // 1. implement connection to LORA Network
+    // 2. send data in network
 
     log::info!(
         "DHT11 reader ready on GPIO 13. Reading every {:?}.",
