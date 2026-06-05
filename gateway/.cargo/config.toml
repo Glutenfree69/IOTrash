@@ -15,7 +15,7 @@ ESP_IDF_VERSION = "v5.5.3"
 ESP_IDF_TOOLS_INSTALL_DIR = "workspace"
 WIFI_SSID = "Ganggang"
 WIFI_PASS = "mdp12345"
-API_URL = "http://172.20.10.2:8080"
+API_URL = "https://webhook.site/495ce242-fee5-4fb4-99a3-a11d5f03fe64"
 
 # Uncomment this if you have moved the target dir by setting CARGO_TARGET_DIR or similar.
 # Required for now due to embuild limitations.

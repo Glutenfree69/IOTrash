@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="820" viewBox="0 0 1240 820" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <rect width="1240" height="820" fill="#ffffff"/>
+
+  <defs>
+    <marker id="aRed" markerWidth="11" markerHeight="11" refX="7" refY="3.2" orient="auto"><path d="M0,0 L8,3.2 L0,6.4 Z" fill="#e05b4a"/></marker>
+    <marker id="aGray" markerWidth="11" markerHeight="11" refX="7" refY="3.2" orient="auto"><path d="M0,0 L8,3.2 L0,6.4 Z" fill="#8a8a8a"/></marker>
+    <marker id="aGreen" markerWidth="11" markerHeight="11" refX="7" refY="3.2" orient="auto"><path d="M0,0 L8,3.2 L0,6.4 Z" fill="#3fa86a"/></marker>
+    <marker id="aAmber" markerWidth="11" markerHeight="11" refX="7" refY="3.2" orient="auto"><path d="M0,0 L8,3.2 L0,6.4 Z" fill="#d9a521"/></marker>
+  </defs>
+
+  <text x="620" y="52" fill="#222222" font-size="32" font-weight="700" text-anchor="middle">Branchement Dust Sensor → TTGO LoRa32</text>
+  <text x="620" y="88" fill="#888888" font-size="21" text-anchor="middle">Waveshare GP2Y1010 — 4 fils. ILED piloté en active-HIGH (HIGH = LED IR allumée).</text>
+
+  <!-- LEFT: sensor -->
+  <rect x="80" y="140" width="380" height="500" rx="24" fill="#16407a"/>
+  <text x="270" y="200" fill="#ffffff" font-size="28" font-weight="700" text-anchor="middle">Dust Sensor</text>
+
+  <rect x="120" y="250" width="90" height="64" rx="9" fill="#a32929"/>
+  <text x="165" y="290" fill="#ffffff" font-size="19" font-weight="700" text-anchor="middle">VCC</text>
+  <rect x="120" y="340" width="90" height="64" rx="9" fill="#5a5a5a"/>
+  <text x="165" y="380" fill="#ffffff" font-size="19" font-weight="700" text-anchor="middle">GND</text>
+  <rect x="120" y="430" width="90" height="64" rx="9" fill="#3a6b1f"/>
+  <text x="165" y="470" fill="#ffffff" font-size="17" font-weight="700" text-anchor="middle">AOUT</text>
+  <rect x="120" y="520" width="90" height="64" rx="9" fill="#9a7415"/>
+  <text x="165" y="560" fill="#ffffff" font-size="18" font-weight="700" text-anchor="middle">ILED</text>
+
+  <!-- RIGHT: TTGO -->
+  <rect x="780" y="140" width="380" height="500" rx="24" fill="#45417f"/>
+  <text x="970" y="200" fill="#ffffff" font-size="28" font-weight="700" text-anchor="middle">TTGO LoRa32</text>
+
+  <rect x="820" y="248" width="300" height="68" rx="11" fill="#7a2222"/>
+  <text x="970" y="280" fill="#ffffff" font-size="22" font-weight="700" text-anchor="middle">3V3</text>
+  <text x="970" y="304" fill="#e6b8b8" font-size="16" text-anchor="middle">marqué "3V3" (5V possible aussi)</text>
+
+  <rect x="820" y="340" width="300" height="68" rx="11" fill="#4a4a4a"/>
+  <text x="970" y="372" fill="#ffffff" font-size="22" font-weight="700" text-anchor="middle">GND</text>
+  <text x="970" y="396" fill="#cccccc" font-size="16" text-anchor="middle">marqué "GND"</text>
+
+  <rect x="820" y="432" width="300" height="68" rx="11" fill="#2f5a18"/>
+  <text x="970" y="464" fill="#ffffff" font-size="22" font-weight="700" text-anchor="middle">GPIO 35</text>
+  <text x="970" y="488" fill="#bfe0a8" font-size="16" text-anchor="middle">ADC1 — entrée seule, marqué "35"</text>
+
+  <rect x="820" y="524" width="300" height="68" rx="11" fill="#7a5e12"/>
+  <text x="970" y="556" fill="#ffffff" font-size="22" font-weight="700" text-anchor="middle">GPIO 25</text>
+  <text x="970" y="580" fill="#e6d39a" font-size="16" text-anchor="middle">sortie commande LED, marqué "25"</text>
+
+  <!-- wires -->
+  <line x1="210" y1="282" x2="815" y2="282" stroke="#e05b4a" stroke-width="5" marker-end="url(#aRed)"/>
+  <line x1="210" y1="372" x2="815" y2="374" stroke="#8a8a8a" stroke-width="5" marker-end="url(#aGray)"/>
+  <line x1="210" y1="462" x2="815" y2="466" stroke="#3fa86a" stroke-width="5" marker-end="url(#aGreen)"/>
+  <line x1="210" y1="552" x2="815" y2="558" stroke="#d9a521" stroke-width="5" marker-end="url(#aAmber)"/>
+
+  <text x="512" y="270" fill="#c0392b" font-size="18" font-weight="700" text-anchor="middle">VCC → 3V3</text>
+  <text x="512" y="362" fill="#9a9a9a" font-size="18" text-anchor="middle">GND → GND</text>
+  <text x="512" y="452" fill="#5aa877" font-size="18" text-anchor="middle">AOUT → GPIO 35</text>
+  <text x="512" y="542" fill="#c2a852" font-size="18" text-anchor="middle">ILED → GPIO 25</text>
+
+  <!-- protocol reminder -->
+  <rect x="80" y="668" width="1080" height="118" rx="16" fill="#f4f6f8"/>
+  <text x="110" y="704" fill="#444444" font-size="19" font-weight="700">Protocole de lecture (cycle 10 ms) :</text>
+  <text x="110" y="734" fill="#666666" font-size="17">ILED HIGH → attendre 280 µs → lire AOUT (ADC) → 40 µs → ILED LOW → 9680 µs.  10 mesures moyennées.</text>
+  <text x="110" y="762" fill="#666666" font-size="17">Conversion : densité (µg/m³) = (mV − 600) / 5.   Sensibilité 0,5 V / 100 µg/m³.</text>
+</svg>
