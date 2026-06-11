@@ -15,3 +15,15 @@ CONFIG_PTHREAD_TASK_STACK_SIZE_DEFAULT=4096
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
 CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS=y
+
+# --- Production hardening (disabled by default for dev convenience) ---
+# The WiFi credentials in src/wifi.rs (env!("WIFI_SSID")/env!("WIFI_PASS"))
+# are baked into the firmware image as plaintext. On a real deployment,
+# uncomment the two lines below to encrypt flash contents at rest, so the
+# credentials can't be read back by dumping the device's flash chip.
+# NOTE: enabling flash encryption is one-way on real hardware (the device
+# permanently switches to encrypted boot) and requires `espflash` to manage
+# the encryption key — do NOT enable this on a dev board you still need to
+# easily reflash, and read the ESP-IDF flash encryption docs first.
+# CONFIG_SECURE_FLASH_ENC_ENABLED=y
+# CONFIG_SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT=y

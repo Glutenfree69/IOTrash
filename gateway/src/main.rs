@@ -17,7 +17,7 @@ fn main() -> anyhow::Result<()> {
     let nvs = esp_idf_svc::nvs::EspDefaultNvsPartition::take()?;
 
     // Connect WiFi
-    let wifi = wifi::connect(peripherals.modem, sysloop, Some(nvs))?;
+    let mut wifi = wifi::connect(peripherals.modem, sysloop, Some(nvs))?;
 
     // Derive chip ID from MAC address
     let mac = wifi
@@ -34,6 +34,14 @@ fn main() -> anyhow::Result<()> {
 
     // Main loop: receive packet -> forward to API
     loop {
+        // RELIABILITY: rejoin the AP if it dropped since the last iteration,
+        // so a transient WiFi outage doesn't permanently stop data uploads.
+        if let Err(e) = wifi::ensure_connected(&mut wifi) {
+            log::error!("Failed to reconnect WiFi: {e}");
+            std::thread::sleep(std::time::Duration::from_secs(10));
+            continue;
+        }
+
         match source.receive() {
             Ok(packet) => {
                 log::info!(

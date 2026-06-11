@@ -1,4 +1,6 @@
 use anyhow::Result;
+use std::time::Duration;
+
 use embedded_svc::http::client::Client as HttpClient;
 use embedded_svc::io::Write;
 use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
@@ -6,6 +8,12 @@ use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
 use crate::packet::SensorPacket;
 
 const DEFAULT_API_URL: &str = "https://api.sensor.community/v1/push-sensor-data/";
+
+// RELIABILITY: without an explicit timeout, a connection that never gets a
+// response (dead AP, unreachable test server, ...) blocks this call forever
+// and freezes the whole main loop. 10s is generous for a small JSON POST but
+// still bounded.
+const HTTP_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub struct SensorApi {
     chip_id: String,
@@ -43,12 +51,24 @@ impl SensorApi {
 
     fn post_with_pin(&self, pin: &str, body: &str) -> Result<()> {
         let use_https = self.base_url.starts_with("https");
+        // SECURITY: warn loudly if sensor data is sent unencrypted. This is
+        // expected for the local-test override (`API_URL=http://...`,
+        // documented in gateway/.env.example), but should never happen with
+        // the default sensor.community endpoint, which is HTTPS-only.
+        if !use_https {
+            log::warn!(
+                "Sending sensor data over plaintext HTTP to {} — \
+                 only use this for local testing, never in production",
+                self.base_url
+            );
+        }
         let config = Configuration {
             crt_bundle_attach: if use_https {
                 Some(esp_idf_svc::sys::esp_crt_bundle_attach)
             } else {
                 None
             },
+            timeout: Some(HTTP_TIMEOUT),
             ..Default::default()
         };
 
