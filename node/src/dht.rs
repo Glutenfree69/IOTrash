@@ -30,7 +30,7 @@ use esp_idf_svc::hal::rmt::config::{ReceiveConfig, RxChannelConfig};
 use esp_idf_svc::hal::rmt::{RmtChannel, RxChannelDriver, Symbol};
 use esp_idf_svc::hal::units::FromValueType;
 use esp_idf_svc::sys::{
-    esp_rom_delay_us, gpio_mode_t_GPIO_MODE_INPUT, gpio_mode_t_GPIO_MODE_OUTPUT_OD,
+    esp_random, esp_rom_delay_us, gpio_mode_t_GPIO_MODE_INPUT, gpio_mode_t_GPIO_MODE_OUTPUT_OD,
     gpio_pull_mode_t_GPIO_PULLUP_ONLY, gpio_set_direction, gpio_set_level, gpio_set_pull_mode,
     ESP_ERR_TIMEOUT,
 };
@@ -53,6 +53,19 @@ const SYMBOL_BUFFER_LEN: usize = 64;
 /// rate that's 500 ms — plenty, the actual frame is ~5 ms.
 const FRAME_WAIT_TICKS: u32 = 50;
 
+// --- Mocked output ---
+// The DHT11 on the bench is dead (data line stays silent), so `read()` still
+// performs the real start-signal/RMT cycle (for timing) but synthesises
+// plausible indoor values: gentle random walks, same scheme as the dust mock.
+const MOCK_TEMP_START_C: f32 = 21.5;
+const MOCK_TEMP_MIN_C: f32 = 18.0;
+const MOCK_TEMP_MAX_C: f32 = 26.0;
+const MOCK_TEMP_STEP_C: f32 = 0.6; // max swing per reading (±MOCK_STEP/2)
+const MOCK_RH_START_PCT: f32 = 45.0;
+const MOCK_RH_MIN_PCT: f32 = 35.0;
+const MOCK_RH_MAX_PCT: f32 = 60.0;
+const MOCK_RH_STEP_PCT: f32 = 3.0;
+
 pub trait SensorReader {
     fn read(&mut self) -> Result<DhtReading>;
 }
@@ -66,6 +79,9 @@ pub struct DhtReading {
 pub struct Dht11Reader<'d> {
     rx: RxChannelDriver<'d>,
     pin_num: i32,
+    /// Last synthesised values, carried over for smooth random walks.
+    mocked_temp_c: f32,
+    mocked_rh_pct: f32,
 }
 
 impl<'d> Dht11Reader<'d> {
@@ -87,7 +103,12 @@ impl<'d> Dht11Reader<'d> {
         rx.enable()
             .map_err(|e| anyhow!("failed to enable RMT channel: {e:?}"))?;
 
-        Ok(Self { rx, pin_num })
+        Ok(Self {
+            rx,
+            pin_num,
+            mocked_temp_c: MOCK_TEMP_START_C,
+            mocked_rh_pct: MOCK_RH_START_PCT,
+        })
     }
 
     /// Drives the start signal on the data line, then hands it back to RMT.
@@ -126,8 +147,28 @@ impl<'d> Dht11Reader<'d> {
             bail!("no RMT symbols received");
         }
 
-        let response_idx = Self::find_response_index(symbols)
-            .ok_or_else(|| anyhow!("no response symbol in {} captured symbols", symbols.len()))?;
+        let response_idx = Self::find_response_index(symbols).ok_or_else(|| {
+            // Dump the first symbols to tell a silent sensor (only our own
+            // ~20 ms start signal captured) from a wiring/pin problem.
+            let dump = symbols
+                .iter()
+                .take(4)
+                .map(|s| {
+                    format!(
+                        "({:?}:{}us {:?}:{}us)",
+                        s.level0().pin_state,
+                        s.level0().ticks.ticks(),
+                        s.level1().pin_state,
+                        s.level1().ticks.ticks(),
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            anyhow!(
+                "no response symbol in {} captured symbols: {dump}",
+                symbols.len()
+            )
+        })?;
 
         let bit_start = response_idx + 1;
         if symbols.len() < bit_start + 40 {
@@ -166,8 +207,10 @@ impl<'d> Dht11Reader<'d> {
     }
 }
 
-impl<'d> SensorReader for Dht11Reader<'d> {
-    fn read(&mut self) -> Result<DhtReading> {
+impl<'d> Dht11Reader<'d> {
+    /// Real DHT11 transaction: start signal, RMT capture, frame decode.
+    /// Unused while the output is mocked, kept for when a live sensor returns.
+    fn read_raw(&mut self) -> Result<DhtReading> {
         let mut symbols = [Symbol::default(); SYMBOL_BUFFER_LEN];
 
         // Pulses shorter than 1 µs are glitches (RMT caps this filter at ~3.2 µs).
@@ -215,5 +258,28 @@ impl<'d> SensorReader for Dht11Reader<'d> {
             .map_err(|e| anyhow!("RMT receive failed: {e:?}"))?;
 
         Self::decode(&symbols[..count])
+    }
+}
+
+impl<'d> SensorReader for Dht11Reader<'d> {
+    fn read(&mut self) -> Result<DhtReading> {
+        // Run the real start-signal/RMT cycle so the timing path stays
+        // exercised. The decoded frame is unused while the output is mocked.
+        let _ = self.read_raw();
+
+        // Synthesise believable indoor values: random walks within typical
+        // room conditions, same scheme as the dust mock.
+        let r = unsafe { esp_random() } as f32 / u32::MAX as f32; // 0.0..=1.0
+        let delta = (r - 0.5) * MOCK_TEMP_STEP_C;
+        self.mocked_temp_c = (self.mocked_temp_c + delta).clamp(MOCK_TEMP_MIN_C, MOCK_TEMP_MAX_C);
+
+        let r = unsafe { esp_random() } as f32 / u32::MAX as f32;
+        let delta = (r - 0.5) * MOCK_RH_STEP_PCT;
+        self.mocked_rh_pct = (self.mocked_rh_pct + delta).clamp(MOCK_RH_MIN_PCT, MOCK_RH_MAX_PCT);
+
+        Ok(DhtReading {
+            temperature_c: self.mocked_temp_c,
+            humidity_pct: self.mocked_rh_pct,
+        })
     }
 }
