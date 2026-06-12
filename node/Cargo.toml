@@ -25,8 +25,16 @@ esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc.git" }
 [dependencies]
 log = "0.4"
 anyhow = "1"
-esp-idf-svc = { version = "0.52.1", features = ["critical-section"] }
+esp-idf-svc = { version = "0.52.1", features = ["critical-section", "embassy-time-driver", "embassy-sync"] }
 embedded-svc = "0.29"
+# Remove `generic-queue-8` if you plan to use `embassy-time` WITH `embassy-executor`
+embassy-time = { version = "0.5", features = ["generic-queue-8"] }
+# Shared wire protocol (SensorPacket encode/decode + CRC).
+protocol = { path = "../protocol" }
+# LoRa PHY driver (lora-rs). The node always transmits over LoRa.
+lora-phy = "3"
+embedded-hal = "1"
+embedded-hal-async = "1"
 
 [build-dependencies]
 embuild = "0.33"

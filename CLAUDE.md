@@ -4,7 +4,7 @@
 
 Projet "Sensor Sensei" : capteur qualité de l'air avec communication LoRa vers une gateway WiFi qui forward les données à sensor.community.
 
-Lire PLAN.md pour l'architecture complète, le protocole, et les phases.
+Lire README.md pour l'architecture, le protocole et les commandes.
 
 ## Stack
 
@@ -29,27 +29,30 @@ Lire PLAN.md pour l'architecture complète, le protocole, et les phases.
 ## Structure workspace
 
 ```
-gateway/    → firmware gateway (phase 1, dev actuel)
-node/       → firmware node capteur (phase 2)
-docs/       → documentation projet
+gateway/    → firmware gateway (LoRa RX + WiFi + HTTP)
+node/       → firmware node capteur (DHT11 + dust + LoRa TX)
+protocol/   → crate partagé (SensorPacket, encode/decode, CRC) — testable sur l'hôte
 ```
 
 Chaque firmware est un projet Rust indépendant avec son propre Cargo.toml.
+Ignorer le dossier `miner/`.
 
 ## Commandes utiles
 
+Ne jamais lancer les commandes cargo soi-même — Dylan build/flash lui-même.
+
 ```bash
-# Build + flash + monitor
+# Node : build + flash + monitor
+cd node && cargo espflash flash --monitor
+
+# Gateway en LoRa réel
+cd gateway && cargo espflash flash --features lora --monitor
+
+# Gateway en mock (défaut, sans node)
 cd gateway && cargo espflash flash --monitor
 
-# Build seul (check compilation)
-cargo build
-
-# Monitor seul (pas de reflash)
-espflash monitor
-
-# Build en mode mock (sans hardware LoRa)
-cargo build --features mock
+# Tests du protocole (sur l'hôte)
+cd protocol && cargo test
 ```
 
 ## Points d'attention
@@ -60,4 +63,5 @@ cargo build --features mock
   (attention P1 n'est PAS PM2.5, c'est contre-intuitif)
 - WiFi credentials en dur pour le dev, AP mode config pour la prod
 - GPS coordinates hardcodées (autorisé par le sujet)
-- Feature flag `mock` pour switcher MockSource / LoRaSource
+- Feature flag `mock` (défaut) / `lora` côté gateway — `lora` a priorité si les deux sont actives
+- Le capteur de poussière GP2Y1010 est mort : son mock dans `node/src/dust.rs` est volontaire, NE PAS le retirer

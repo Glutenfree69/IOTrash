@@ -28,6 +28,12 @@ esp-idf-svc = { version = "0.52.1", features = ["critical-section", "embassy-tim
 embedded-svc = "0.29"
 # Remove `generic-queue-8` if you plan to use `embassy-time` WITH `embassy-executor`
 embassy-time = { version = "0.5", features = ["generic-queue-8"] }
+# Shared wire protocol (SensorPacket encode/decode + CRC).
+protocol = { path = "../protocol" }
+# LoRa PHY driver (lora-rs). Only used behind the `lora` feature.
+lora-phy = { version = "3", optional = true }
+embedded-hal = { version = "1", optional = true }
+embedded-hal-async = { version = "1", optional = true }
 
 [build-dependencies]
 embuild = "0.33"
@@ -35,3 +41,4 @@ embuild = "0.33"
 [features]
 default = ["mock"]
 mock = []
+lora = ["dep:lora-phy", "dep:embedded-hal", "dep:embedded-hal-async"]

@@ -1,5 +1,9 @@
 mod api;
-#[cfg(feature = "mock")]
+#[cfg(feature = "lora")]
+mod lora;
+// `mock` is in the default features, so `--features lora` alone would enable
+// both; `lora` takes priority so no `--no-default-features` is needed.
+#[cfg(all(feature = "mock", not(feature = "lora")))]
 mod mock;
 mod packet;
 mod wifi;
@@ -29,8 +33,34 @@ fn main() -> anyhow::Result<()> {
     let api = api::SensorApi::new(chip_id);
 
     // Create packet source (mock or lora depending on feature flag)
-    #[cfg(feature = "mock")]
+    #[cfg(all(feature = "mock", not(feature = "lora")))]
     let mut source = mock::MockSource::new(1);
+
+    // Real LoRa receiver on the TTGO LoRa32's internal SX1276 (SPI2).
+    // Pinout (TTGO LoRa32 v2.1): SCK=5, MISO=19, MOSI=27, CS=18, RST=23, DIO0=26.
+    #[cfg(feature = "lora")]
+    let mut source = {
+        use esp_idf_svc::hal::gpio::{PinDriver, Pull};
+        use esp_idf_svc::hal::spi::{config::Config as SpiConfig, SpiDeviceDriver, SpiDriver, SpiDriverConfig};
+        use esp_idf_svc::hal::units::FromValueType;
+
+        let pins = peripherals.pins;
+        let driver = SpiDriver::new(
+            peripherals.spi2,
+            pins.gpio5,            // SCLK
+            pins.gpio27,           // MOSI (SDO)
+            Some(pins.gpio19),     // MISO (SDI)
+            &SpiDriverConfig::new(),
+        )?;
+        let spi = SpiDeviceDriver::new(
+            driver,
+            Some(pins.gpio18),     // CS / NSS
+            &SpiConfig::new().baudrate(8.MHz().into()),
+        )?;
+        let reset = PinDriver::output(pins.gpio23)?;
+        let dio0 = PinDriver::input(pins.gpio26, Pull::Floating)?;
+        lora::new_source(spi, reset, dio0)?
+    };
 
     // Main loop: receive packet -> forward to API
     loop {

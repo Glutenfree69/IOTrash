@@ -10,3 +10,7 @@ CONFIG_FREERTOS_IDLE_TASK_STACKSIZE=4096
 # that allocate large stack variables; or better yet - use
 # `std::thread::Builder::new().stack_size(XXX)` for spawning
 CONFIG_PTHREAD_TASK_STACK_SIZE_DEFAULT=4096
+
+# Keep the SPI master ISR out of IRAM so esp-idf-hal exposes the async
+# `embedded_hal_async::spi::SpiDevice` impl (required by lora-phy).
+CONFIG_SPI_MASTER_ISR_IN_IRAM=n

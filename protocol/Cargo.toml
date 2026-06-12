@@ -1,0 +1,12 @@
+[package]
+name = "protocol"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+
+# Pure logic shared between `node` (encode) and `gateway` (decode).
+# No esp-idf dependency, so it cross-compiles for the ESP32 target and also
+# builds/tests on the host (`cargo test`).
+
+[dependencies]
+anyhow = "1"

@@ -4,6 +4,9 @@ target = "xtensa-esp32-espidf"
 [target.'cfg(target_os = "espidf")']
 linker = "ldproxy"
 runner = "espflash flash --monitor"
+# NOTE: `-Tdefmt.x` (needed by lora-phy's defmt dependency) must NOT live here:
+# it would apply to mock builds too, where defmt isn't compiled and the script
+# doesn't exist. build.rs adds it only when the `lora` feature is enabled.
 rustflags = [ "--cfg",  "espidf_time64"]
 
 [unstable]
@@ -15,7 +18,10 @@ ESP_IDF_VERSION = "v5.5.3"
 ESP_IDF_TOOLS_INSTALL_DIR = "workspace"
 WIFI_SSID = "Ganggang"
 WIFI_PASS = "mdp12345"
-API_URL = "https://webhook.site/495ce242-fee5-4fb4-99a3-a11d5f03fe64"
+# API_URL unset -> falls back to the real endpoint
+# (https://api.sensor.community/v1/push-sensor-data/, see api.rs).
+# Set it to a webhook.site URL to debug the POSTs without pushing real data.
+API_URL = "https://webhook.site/818128c1-0c70-4e54-ae8e-a2b6b5f965c6"
 
 # Uncomment this if you have moved the target dir by setting CARGO_TARGET_DIR or similar.
 # Required for now due to embuild limitations.
