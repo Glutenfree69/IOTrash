@@ -30,13 +30,15 @@ impl SensorApi {
         );
         self.post_with_pin("1", &dust_body)?;
 
-        // POST 2: climate data (X-Pin: 11, DHT22)
+        // POST 2: climate data (X-Pin: 7, DHT22). Careful: pin 11 is the
+        // BME280/BMP280 slot in the sensor.community convention — pushing a
+        // DHT22-configured device on pin 11 gets a 400.
         let climate_body = format!(
             r#"{{"software_version":"sensor-sensei-0.1","sensordatavalues":[{{"value_type":"temperature","value":"{:.1}"}},{{"value_type":"humidity","value":"{:.1}"}}]}}"#,
             packet.temperature(),
             packet.humidity(),
         );
-        self.post_with_pin("11", &climate_body)?;
+        self.post_with_pin("7", &climate_body)?;
 
         Ok(())
     }

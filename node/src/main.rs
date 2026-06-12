@@ -9,7 +9,10 @@ use dust::Gp2y1010Reader;
 use lora::PacketSink;
 use protocol::{SensorPacket, MSG_TYPE_SENSOR_DATA};
 
-const READ_INTERVAL: Duration = Duration::from_secs(5);
+// sensor.community expects one measurement per ~2.5 min and silently drops
+// anything pushed more often than every 60 s. Drop this back to a few seconds
+// for bench testing against webhook.site.
+const READ_INTERVAL: Duration = Duration::from_secs(150);
 const NODE_ID: u8 = 1;
 
 fn main() -> anyhow::Result<()> {

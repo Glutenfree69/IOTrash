@@ -70,7 +70,7 @@ Gateway WiFi credentials and API endpoint are compile-time settings in
    `SensorPacket` and transmits it (868.1 MHz, SF7, BW 125 kHz, CR 4/5, 14 dBm).
 2. The gateway receives, validates the CRC and decodes the packet.
 3. It forwards the data as two HTTP POSTs in sensor.community format:
-   `X-Pin: 1` carrying `P1`/`P2` (PM10/PM2.5) and `X-Pin: 11` carrying
+   `X-Pin: 1` carrying `P1`/`P2` (PM10/PM2.5) and `X-Pin: 7` carrying
    `temperature`/`humidity`. Note: `P1` is PM10, **not** PM2.5.
 
 ### Wire protocol

@@ -21,7 +21,7 @@ WIFI_PASS = "mdp12345"
 # API_URL unset -> falls back to the real endpoint
 # (https://api.sensor.community/v1/push-sensor-data/, see api.rs).
 # Set it to a webhook.site URL to debug the POSTs without pushing real data.
-API_URL = "https://webhook.site/818128c1-0c70-4e54-ae8e-a2b6b5f965c6"
+# API_URL = "https://webhook.site/818128c1-0c70-4e54-ae8e-a2b6b5f965c6"
 
 # Uncomment this if you have moved the target dir by setting CARGO_TARGET_DIR or similar.
 # Required for now due to embuild limitations.
